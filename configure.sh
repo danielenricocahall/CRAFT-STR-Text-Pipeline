@@ -2,7 +2,6 @@ git submodule init
 git submodule update
 ln -s CRAFT-pytorch/ craft
 ln -s deep-text-recognition-benchmark/ scene_text_recognition
-gdown https://drive.google.com/file/d/1Jk4eGD7crsqCCg9C9VjCLkMN3ze8kutZ/view?usp=sharing
 virtualenv venv
 source venv/bin/activate
 pip install -r requirements.txt

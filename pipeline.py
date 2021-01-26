@@ -212,9 +212,3 @@ if __name__ == '__main__':
         
         end_time = time.time()
         print("Duration for one image: " + str(end_time - start_time) + "s", flush=True)
-
-
-
-
-            
-            
