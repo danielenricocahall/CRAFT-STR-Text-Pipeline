@@ -14,5 +14,6 @@ gdown https://drive.google.com/uc?id=1FocnxQzFBIjDT2F9BkNUiLdo1cC3eaO0
 gdown https://drive.google.com/uc?id=1b59rXuGGmKne1AuHnkgDzoYgKeETNMv9
 gdown https://drive.google.com/uc?id=1ajONZOgiG9pEYsQ-eBmgkVbMDuHgPCaY
 popd || exit
-export PYTHONPATH="${PYTHONPATH}:./craft_detection"
-export PYTHONPATH="${PYTHONPATH}:./scene_text_recognition"
+PROJECT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+export PYTHONPATH="${PYTHONPATH}:${PROJECT_DIR}/craft_detection"
+export PYTHONPATH="${PYTHONPATH}:${PROJECT_DIR}/scene_text_recognition"
