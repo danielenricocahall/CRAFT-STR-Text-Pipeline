@@ -14,3 +14,5 @@ gdown https://drive.google.com/uc?id=1FocnxQzFBIjDT2F9BkNUiLdo1cC3eaO0
 gdown https://drive.google.com/uc?id=1b59rXuGGmKne1AuHnkgDzoYgKeETNMv9
 gdown https://drive.google.com/uc?id=1ajONZOgiG9pEYsQ-eBmgkVbMDuHgPCaY
 popd || exit
+export PYTHONPATH="${PYTHONPATH}:/home/daniel/PycharmProjects/CRAFT-STR-Text-Pipeline/craft"
+export PYTHONPATH="${PYTHONPATH}:/home/daniel/PycharmProjects/CRAFT-STR-Text-Pipeline/scene_text_recognition"
