@@ -13,16 +13,16 @@ import torch.backends.cudnn as cudnn
 from torch.autograd import Variable
 import cv2
 import numpy as np
-from foo import craft_utils
-from foo import imgproc
-from foo import file_utils
-from foo.craft import CRAFT
+from craft_detection import craft_utils
+from craft_detection import imgproc
+from craft_detection import file_utils
+from craft_detection.craft import CRAFT
 from scene_text_recognition.model import Model
 from scene_text_recognition.utils import CTCLabelConverter, AttnLabelConverter
 import string
 from PIL import Image
 from scene_text_recognition.dataset import ResizeNormalize
-from foo.test import copyStateDict, str2bool
+from craft_detection.test import copyStateDict, str2bool
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
