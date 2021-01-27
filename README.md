@@ -1,6 +1,6 @@
 # CRAFT-STR-Text-Pipeline
 
-This is a simple repository which just combines two awesome pieces of work by CLOVAAI into one simple script to perform text detection + recognition.
+This is a simple repository which just combines two awesome pieces of work by CLOVA AI Research (https://github.com/clovaai) into one simple script to perform text detection + recognition.
 
 ## Instructions
 
