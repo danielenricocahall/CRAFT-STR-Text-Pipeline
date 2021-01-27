@@ -199,7 +199,6 @@ if __name__ == '__main__':
             preds_str = converter.decode(preds_index, length_for_pred)
 
         if 'Attn' in opt.Prediction:
-            os.mkdir(f'{result_folder}/{image_path}')
             for image, pred in zip(images, preds_str):
                 pred = pred[:pred.find('[s]')]  # prune after "end of sentence" token ([s])
                 cv2.imwrite(opt.result_dir + str(pred) + ".png", np.array(image))
