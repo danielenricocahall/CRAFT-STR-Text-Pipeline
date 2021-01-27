@@ -87,6 +87,7 @@ if __name__ == '__main__':
     parser.add_argument('--poly', default=False, action='store_true', help='enable polygon type')
     parser.add_argument('--show_time', default=False, action='store_true', help='show processing time')
     parser.add_argument('--data', default='./data/', type=str, help='folder path to input images')
+    parser.add_argument('--result_dir', default='./result/', type=str, help='folder path to load result images')
     parser.add_argument('--workers', type=int, help='number of data loading workers', default=4)
     parser.add_argument('--batch_size', type=int, default=1, help='input batch size')
     """ Data processing """
@@ -122,7 +123,7 @@ if __name__ == '__main__':
     """ For test images in a folder """
     image_list, _, _ = file_utils.get_files(opt.data)
 
-    result_folder = './result/'
+    result_folder = opt.result_dir
     if not os.path.isdir(result_folder):
         os.mkdir(result_folder)
     # load net
@@ -167,14 +168,11 @@ if __name__ == '__main__':
             x, y = int(x), int(y)
             w, h = bbox[2] - bbox[0]
             w, h = int(w), int(h)
+            if w == 0 or h == 0:
+                continue
             region = img[y:y + h, x:x + w]
             region = cv2.cvtColor(region, cv2.COLOR_BGR2GRAY)
             region = Image.fromarray(region)
-            # transform = ResizeNormalize((opt.imgW, opt.imgH))
-            # image_tensor = transform(region)
-            # image_tensor = image_tensor.unsqueeze(1)
-            # batch_size = 1
-            # image = image_tensor.to(device)
             images.append(region)
 
         transform = ResizeNormalize((opt.imgW, opt.imgH))
@@ -201,11 +199,10 @@ if __name__ == '__main__':
             preds_str = converter.decode(preds_index, length_for_pred)
 
         if 'Attn' in opt.Prediction:
-            for pred in preds_str:
+            os.mkdir(f'{result_folder}/{image_path}')
+            for image, pred in zip(images, preds_str):
                 pred = pred[:pred.find('[s]')]  # prune after "end of sentence" token ([s])
-                print(pred)
-            # region = np.squeeze(region)
-            # cv2.imwrite("./result/" + str(pred) + ".png", region)
+                cv2.imwrite(opt.result_dir + str(pred) + ".png", np.array(image))
 
         end_time = time.time()
         print("Duration for one image: " + str(end_time - start_time) + "s", flush=True)
