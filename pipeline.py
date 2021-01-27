@@ -53,9 +53,11 @@ def predict(net, image, text_threshold, link_threshold, low_text, cuda, poly, ca
     boxes = craft_utils.adjustResultCoordinates(boxes, ratio_w, ratio_h)
     polys = craft_utils.adjustResultCoordinates(polys, ratio_w, ratio_h)
     for k in range(len(polys)):
-        if polys[k] is None: polys[k] = boxes[k]
+        if polys[k] is None:
+            polys[k] = boxes[k]
 
     t1 = time.time() - t1
+    print(t1)
 
     # render results (optional)
     render_img = score_text.copy()
@@ -124,7 +126,7 @@ if __name__ == '__main__':
     net = CRAFT()  # initialize
 
     print('Loading CRAFT weights from checkpoint (' + opt.trained_craft_model + ')')
-    print('Loading STR weights from checkpoint (' + opt.trained_craft_model + ')')
+    print('Loading STR weights from checkpoint (' + opt.trained_str_model + ')')
 
     model = Model(opt)
     print('model input parameters', opt.imgH, opt.imgW, opt.num_fiducial, opt.input_channel, opt.output_channel,
@@ -157,6 +159,7 @@ if __name__ == '__main__':
         bboxes, polys, score_text = predict(net, img, opt.text_threshold, opt.link_threshold, opt.low_text, opt.cuda,
                                             opt.poly, opt.canvas_size, opt.mag_ratio)
         images = []
+        start = time.time()
         for bbox in bboxes:
             x, y = bbox[0]
             x, y = int(x), int(y)
@@ -179,12 +182,11 @@ if __name__ == '__main__':
         text_for_pred = torch.LongTensor(batch_size, opt.batch_max_length + 1).fill_(0).to(device)
 
         if 'CTC' in opt.Prediction:
-            preds = model(image_tensors, text_for_pred).log_softmax(2)
+            preds = model(image_tensors, text_for_pred)
             # Select max probabilty (greedy decoding) then decode index to character
             preds_size = torch.IntTensor([preds.size(1)] * batch_size)
-            _, preds_index = preds.permute(1, 0, 2).max(2)
-            preds_index = preds_index.transpose(1, 0).contiguous().view(-1)
-            preds_str = converter.decode(preds_index.data, preds_size.data)
+            _, preds_index = preds.max(2)
+            preds_str = converter.decode(preds_index, preds_size)
 
         else:
             preds = model(image_tensors, text_for_pred, is_train=False)
@@ -192,10 +194,10 @@ if __name__ == '__main__':
             _, preds_index = preds.max(2)
             preds_str = converter.decode(preds_index, length_for_pred)
 
-        if 'Attn' in opt.Prediction:
-            for image, pred in zip(images, preds_str):
+        for image, pred in zip(images, preds_str):
+            if 'Attn' in opt.Prediction:
                 pred = pred[:pred.find('[s]')]  # prune after "end of sentence" token ([s])
-                cv2.imwrite(opt.result_dir + str(pred) + ".png", np.array(image))
+            cv2.imwrite(opt.result_dir + str(pred) + ".png", np.array(image))
 
         end_time = time.time()
         print("Duration for one image: " + str(end_time - start_time) + "s", flush=True)
