@@ -205,7 +205,7 @@ if __name__ == '__main__':
                 pred = pred[:pred.find('[s]')]  # prune after "end of sentence" token ([s])
                 print(pred)
             # region = np.squeeze(region)
-            # cv2.imwrite("./results/" + str(pred) + ".png", region)
+            # cv2.imwrite("./result/" + str(pred) + ".png", region)
 
         end_time = time.time()
         print("Duration for one image: " + str(end_time - start_time) + "s", flush=True)
