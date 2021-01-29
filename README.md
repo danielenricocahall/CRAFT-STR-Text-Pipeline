@@ -32,5 +32,5 @@ This was a bit hastily thrown together but I wanted to get it out there in case 
 
 - Refactor to permit supplying individual images
 - Refactor for performance
-- Add flag to just save coordinates and class as JSON, rather than entire subimage
-- Building on the previous idea, maybe dockerize this and enable it to be used as service? :)
+- Refactor to follow nice development practices rather than a hacky script 
+- Maybe dockerize this and enable it to be used as service? :)
