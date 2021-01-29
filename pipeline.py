@@ -1,6 +1,8 @@
+import json
 import os
 import time
 import argparse
+from collections import defaultdict
 
 import torch
 import torch.backends.cudnn as cudnn
@@ -11,12 +13,13 @@ from craft_detection import craft_utils
 from craft_detection import imgproc
 from craft_detection import file_utils
 from craft_detection.craft import CRAFT
-from scene_text_recognition.model import Model
+from scene_text_recognition.model import Model as STRModel
 from scene_text_recognition.utils import CTCLabelConverter, AttnLabelConverter
 import string
 from PIL import Image
 from scene_text_recognition.dataset import ResizeNormalize
 from craft_detection.test import copyStateDict, str2bool
+from utils import extract_file_name
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -122,32 +125,31 @@ if __name__ == '__main__':
     result_folder = opt.result_dir
     if not os.path.isdir(result_folder):
         os.mkdir(result_folder)
-    # load net
-    net = CRAFT()  # initialize
+    craft_model = CRAFT()
 
     print('Loading CRAFT weights from checkpoint (' + opt.trained_craft_model + ')')
     print('Loading STR weights from checkpoint (' + opt.trained_str_model + ')')
 
-    model = Model(opt)
+    str_model = STRModel(opt)
     print('model input parameters', opt.imgH, opt.imgW, opt.num_fiducial, opt.input_channel, opt.output_channel,
           opt.hidden_size, opt.num_class, opt.batch_max_length, opt.Transformation, opt.FeatureExtraction,
           opt.SequenceModeling, opt.Prediction)
 
-    model = torch.nn.DataParallel(model).to(device)
+    str_model = torch.nn.DataParallel(str_model).to(device)
     if opt.cuda:
-        net.load_state_dict(copyStateDict(torch.load(opt.trained_craft_model)))
-        model.load_state_dict(torch.load(opt.trained_str_model))
+        craft_model.load_state_dict(copyStateDict(torch.load(opt.trained_craft_model)))
+        str_model.load_state_dict(torch.load(opt.trained_str_model))
     else:
-        net.load_state_dict(copyStateDict(torch.load(opt.trained_craft_model, map_location='cpu')))
-        model.load_state_dict(torch.load(opt.trained_str_model, map_location="cpu"))
+        craft_model.load_state_dict(copyStateDict(torch.load(opt.trained_craft_model, map_location='cpu')))
+        str_model.load_state_dict(torch.load(opt.trained_str_model, map_location="cpu"))
 
     if opt.cuda:
-        net = net.cuda()
-        net = torch.nn.DataParallel(net)
+        craft_model = craft_model.cuda()
+        craft_model = torch.nn.DataParallel(craft_model)
         cudnn.benchmark = False
 
-    net.eval()
-    model.eval()
+    craft_model.eval()
+    str_model.eval()
 
     # load data
 
@@ -156,21 +158,25 @@ if __name__ == '__main__':
         print("Test image {:d}/{:d}: {:s}".format(k + 1, len(image_list), image_path), end='\r')
         img = imgproc.loadImage(image_path)
 
-        bboxes, polys, score_text = predict(net, img, opt.text_threshold, opt.link_threshold, opt.low_text, opt.cuda,
+        bboxes, polys, score_text = predict(craft_model, img, opt.text_threshold, opt.link_threshold, opt.low_text, opt.cuda,
                                             opt.poly, opt.canvas_size, opt.mag_ratio)
         images = []
+        regions = []
         start = time.time()
         for bbox in bboxes:
             x, y = bbox[0]
             x, y = int(x), int(y)
             w, h = bbox[2] - bbox[0]
             w, h = int(w), int(h)
-            if w == 0 or h == 0:
+            sub_image = img[y:y + h, x:x + w]
+            sub_image = cv2.cvtColor(sub_image, cv2.COLOR_BGR2GRAY)
+            try:
+                sub_image = Image.fromarray(sub_image)
+            except AttributeError:
+                print(f"Error with region {(x, y, w, h)}, skipping")
                 continue
-            region = img[y:y + h, x:x + w]
-            region = cv2.cvtColor(region, cv2.COLOR_BGR2GRAY)
-            region = Image.fromarray(region)
-            images.append(region)
+            images.append(sub_image)
+            regions.append((x, y, w, h))
 
         transform = ResizeNormalize((opt.imgW, opt.imgH))
         image_tensors = [transform(image) for image in images]
@@ -182,22 +188,25 @@ if __name__ == '__main__':
         text_for_pred = torch.LongTensor(batch_size, opt.batch_max_length + 1).fill_(0).to(device)
 
         if 'CTC' in opt.Prediction:
-            preds = model(image_tensors, text_for_pred)
+            preds = str_model(image_tensors, text_for_pred)
             # Select max probabilty (greedy decoding) then decode index to character
             preds_size = torch.IntTensor([preds.size(1)] * batch_size)
             _, preds_index = preds.max(2)
             preds_str = converter.decode(preds_index, preds_size)
 
         else:
-            preds = model(image_tensors, text_for_pred, is_train=False)
+            preds = str_model(image_tensors, text_for_pred, is_train=False)
             # select max probabilty (greedy decoding) then decode index to character
             _, preds_index = preds.max(2)
             preds_str = converter.decode(preds_index, length_for_pred)
-
-        for image, pred in zip(images, preds_str):
+        results = defaultdict(lambda: [])
+        for image, pred, region in zip(images, preds_str, regions):
             if 'Attn' in opt.Prediction:
                 pred = pred[:pred.find('[s]')]  # prune after "end of sentence" token ([s])
-            cv2.imwrite(opt.result_dir + str(pred) + ".png", np.array(image))
+            results[pred].append(region)
+        file_name = extract_file_name(opt.data, image_path)
+        with open(f'{opt.result_dir}/{file_name}.json', 'w') as fp:
+            json.dump(results, fp)
 
         end_time = time.time()
         print("Duration for one image: " + str(end_time - start_time) + "s", flush=True)
